@@ -36,42 +36,37 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 import schemacrawler.schemacrawler.exceptions.InternalRuntimeException;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
+import com.azure.storage.common.StorageSharedKeyCredential;
 
 @Configuration
 @Profile("production")
 public class AWSConfig {
 
-  @Value("${AWS_ACCESS_KEY_ID}")
-  @NotNull(message = "AWS_ACCESS_KEY_ID not provided")
-  private String accessKeyId;
+  @Value("${AZURE_STORAGE_ACCOUNT_NAME}")
+  @NotNull(message = "AZURE_STORAGE_ACCOUNT_NAME not provided")
+  private String accountName;
 
-  @Value("${AWS_SECRET_ACCESS_KEY}")
-  @NotNull(message = "AWS_SECRET_ACCESS_KEY not provided")
-  private String secretAccessKey;
+  @Value("${AZURE_STORAGE_ACCOUNT_KEY}")
+  @NotNull(message = "AZURE_STORAGE_ACCOUNT_KEY not provided")
+  private String accountKey;
 
-  @Value("${AWS_REGION:us-east-1}")
-  @NotNull(message = "AWS_REGION not provided")
-  private String awsRegion;
+  @Value("${AZURE_STORAGE_ENDPOINT}")
+  @NotNull(message = "AZURE_STORAGE_ENDPOINT not provided")
+  private String endpoint;
 
-  @Bean(name = "awsCredentials")
-  public AwsCredentialsProvider awsCredentials() {
-    if (StringUtils.isAnyBlank(accessKeyId, secretAccessKey)) {
-      throw new InternalRuntimeException("No AWS credentials provided");
+  @Bean(name = "azureCredentials")
+  public StorageSharedKeyCredential azureCredentials() {
+    if (StringUtils.isAnyBlank(accountName, accountKey)) {
+      throw new InternalRuntimeException("No Azure credentials provided");
     }
-    final AwsCredentials awsCredentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
-    return StaticCredentialsProvider.create(awsCredentials);
+    return new StorageSharedKeyCredential(accountName, accountKey);
   }
 
-  @Bean(name = "awsRegion")
-  public Region awsRegion() {
-    if (StringUtils.isBlank(awsRegion)) {
-      throw new InternalRuntimeException("No AWS region provided");
+  @Bean(name = "endpoint")
+  public String endpoint() {
+    if (StringUtils.isBlank(endpoint)) {
+      throw new InternalRuntimeException("No endpoint provided");
     }
-    return Region.of(awsRegion);
+    return endpoint;
   }
 }

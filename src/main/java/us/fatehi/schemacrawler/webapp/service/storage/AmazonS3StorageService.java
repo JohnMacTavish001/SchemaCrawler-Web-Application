@@ -49,32 +49,31 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import schemacrawler.schemacrawler.exceptions.InternalRuntimeException;
-import software.amazon.awssdk.services.s3.S3Client;
+import com.azure.storage.blob.BlobServiceClient;
 import us.fatehi.schemacrawler.webapp.model.DiagramKey;
 
-@Service("amazonS3StorageService")
+@Service("azureStorageBlobService")
 @Profile("production")
 public class AmazonS3StorageService implements StorageService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AmazonS3StorageService.class);
 
-  private final String s3Bucket;
-  private final S3Client s3Client;
+  private final String containerName;
+  private final BlobServiceClient blobServiceClient;
 
   @Autowired
-  public AmazonS3StorageService(@NonNull final S3Client s3Client, @NonNull final String s3Bucket) {
-    this.s3Client = s3Client;
-    this.s3Bucket = s3Bucket;
+  public AmazonS3StorageService(@NonNull BlobServiceClient blobServiceClient, @NonNull final String containerName) {
+    this.blobServiceClient = blobServiceClient;
+    this.containerName = containerName;
   }
 
   @Override
   @PostConstruct
   public void init() {
-    final boolean bucketExists =
-        s3Client.headBucket(b -> b.bucket(s3Bucket)).sdkHttpResponse().isSuccessful();
+    final boolean bucketExists = blobServiceClient.getBlobContainerClient(containerName).exists();
     if (!bucketExists) {
       throw new InternalRuntimeException(
-          String.format("Amazon S3 bucket <%s> does not exist", s3Bucket));
+          String.format("Azure blob container <%s> does not exist", containerName));
     }
   }
 
@@ -97,7 +96,7 @@ public class AmazonS3StorageService implements StorageService {
 
       // Download file from S3 to a local temporary file
       // IMPORTANT: Temporary file should not exist
-      s3Client.getObject(b -> b.bucket(s3Bucket).key(filename), tempFilePath);
+      blobServiceClient.getBlobContainerClient(containerName).getBlobClient(filename).downloadToFile(tempFilePath.toString());
 
       // Check that the file is not empty
       if (size(tempFilePath) == 0) {
@@ -134,7 +133,7 @@ public class AmazonS3StorageService implements StorageService {
       }
 
       // Upload local temporary file to S3
-      s3Client.putObject(b -> b.bucket(s3Bucket).key(filename), tempFilePath);
+      blobServiceClient.getBlobContainerClient(containerName).getBlobClient(filename).uploadFromFile(tempFilePath.toString());
 
     } catch (final Exception e) {
       LOGGER.warn(String.format("Could not store <%s.%s>", key, extension), e);
